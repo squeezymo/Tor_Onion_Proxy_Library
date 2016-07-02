@@ -73,6 +73,8 @@ public abstract class OnionProxyManager {
     private volatile TorControlConnection controlConnection = null;
     private volatile int control_port;
 
+    protected OnionProxyManagerEventHandler onionProxyManagerEventHandler;
+
     public OnionProxyManager(OnionProxyContext onionProxyContext) {
         this.onionProxyContext = onionProxyContext;
     }
@@ -389,7 +391,7 @@ public abstract class OnionProxyManager {
             controlConnection.takeOwnership();
             controlConnection.resetConf(Collections.singletonList(OWNER));
             // Register to receive events from the Tor process
-            controlConnection.setEventHandler(new OnionProxyManagerEventHandler());
+            controlConnection.setEventHandler(getEventHandler());
             controlConnection.setEvents(Arrays.asList(EVENTS));
 
             // We only set the class property once the connection is in a known good state
@@ -421,6 +423,16 @@ public abstract class OnionProxyManager {
         return onionProxyContext.getWorkingDirectory();
     }
 
+    protected OnionProxyManagerEventHandler getEventHandler() {
+        if (onionProxyManagerEventHandler == null) {
+            onionProxyManagerEventHandler = new OnionProxyManagerEventHandler();
+        }
+
+        return onionProxyManagerEventHandler;
+    }
+
+    protected void handleLogMessage(final String logMessage) {}
+
     protected void eatStream(final InputStream inputStream, final boolean stdError, final CountDownLatch countDownLatch) {
         new Thread() {
             @Override
@@ -442,6 +454,9 @@ public abstract class OnionProxyManager {
                                                 nextLine.substring(nextLine.lastIndexOf(" ") + 1, nextLine.length() - 1));
                                 countDownLatch.countDown();
                             }
+
+                            handleLogMessage(nextLine);
+
                             LOG.info(nextLine);
                         }
                     }

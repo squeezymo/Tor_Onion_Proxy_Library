@@ -38,25 +38,40 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import com.msopentech.thali.toronionproxy.OnionProxyManager;
+import com.msopentech.thali.toronionproxy.OnionProxyManagerEventHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static android.content.Context.CONNECTIVITY_SERVICE;
 import static android.net.ConnectivityManager.CONNECTIVITY_ACTION;
 import static android.net.ConnectivityManager.EXTRA_NO_CONNECTIVITY;
 
 public class AndroidOnionProxyManager extends OnionProxyManager {
+    public static final String EXTRA_MESSAGE_TYPE = "MessageType";
+    public static final String EXTRA_BOOTSTRAP_PROGRESS = "BootstrapProgress";
+    public static final String EXTRA_BOOTSTRAP_INFO = "BootstrapInfo";
+
+    public static final int MESSAGE_TYPE_BOOTSTRAP = 1;
+
     private static final Logger LOG = LoggerFactory.getLogger(AndroidOnionProxyManager.class);
 
     private volatile BroadcastReceiver networkStateReceiver;
+
     private final Context context;
+    private final LogManager logManager;
 
     public AndroidOnionProxyManager(Context context, String workingSubDirectoryName) {
         super(new AndroidOnionProxyContext(context, workingSubDirectoryName));
+
         this.context = context;
+        this.logManager = new LogManager(context);
     }
 
     @Override
@@ -106,6 +121,57 @@ public class AndroidOnionProxyManager extends OnionProxyManager {
                 LOG.warn(e.toString(), e);
             }
             return false;
+        }
+    }
+
+    @Override
+    protected void handleLogMessage(final String logMessage) {
+        logManager.handleLogMessage(logMessage);
+    }
+
+    @Override
+    protected OnionProxyManagerEventHandler getEventHandler() {
+        if (onionProxyManagerEventHandler == null) {
+            onionProxyManagerEventHandler = new AndroidOnionProxyManagerEventHandler(logManager);
+        }
+
+        return onionProxyManagerEventHandler;
+    }
+
+    public static class LogManager {
+        private final static Pattern bootstrapProgressPattern = Pattern.compile("Bootstrapped (\\d+)%: (.*)");
+        private final WeakReference<Context> context;
+
+        public LogManager(Context context) {
+            this.context = new WeakReference<>(context);
+        }
+
+        public void handleLogMessage(final String logMessage) {
+            final Matcher bootstrapMatcher = bootstrapProgressPattern.matcher(logMessage);
+
+            if (bootstrapMatcher.matches()) {
+                final int progressPercent = Integer.valueOf(bootstrapMatcher.group(1));
+                final String progressInfo = bootstrapMatcher.group(2);
+
+                broadcastBootstrapProgress(progressPercent, progressInfo);
+            }
+        }
+
+        private void broadcastBootstrapProgress(final int progressPercent, final String progressInfo) {
+            final Context context = this.context.get();
+
+            if (context != null) {
+                final Intent intent = new Intent();
+
+                intent.setAction(AndroidOnionProxyManager.class.getCanonicalName());
+                intent.setPackage(context.getPackageName());
+
+                intent.putExtra(EXTRA_MESSAGE_TYPE, MESSAGE_TYPE_BOOTSTRAP);
+                intent.putExtra(EXTRA_BOOTSTRAP_PROGRESS, progressPercent);
+                intent.putExtra(EXTRA_BOOTSTRAP_INFO, progressInfo);
+
+                context.sendBroadcast(intent);
+            }
         }
     }
 
