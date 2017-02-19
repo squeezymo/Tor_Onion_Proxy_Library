@@ -37,6 +37,10 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
+
 import com.msopentech.thali.toronionproxy.OnionProxyManager;
 import com.msopentech.thali.toronionproxy.OnionProxyManagerEventHandler;
 
@@ -46,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.logging.LogManager;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -60,18 +65,73 @@ public class AndroidOnionProxyManager extends OnionProxyManager {
 
     public static final int MESSAGE_TYPE_BOOTSTRAP = 1;
 
+    private static final int INNER_MESSAGE_NETWORK_STATE = 1;
+
     private static final Logger LOG = LoggerFactory.getLogger(AndroidOnionProxyManager.class);
 
     private volatile BroadcastReceiver networkStateReceiver;
 
     private final Context context;
     private final LogManager logManager;
+    private final HandlerThread backgroundThread;
+    private final Handler backgroundHandler;
 
-    public AndroidOnionProxyManager(Context context, String workingSubDirectoryName) {
+    public AndroidOnionProxyManager(final Context context, final String workingSubDirectoryName) {
         super(new AndroidOnionProxyContext(context, workingSubDirectoryName));
 
         this.context = context;
         this.logManager = new LogManager(context);
+        this.backgroundThread = new HandlerThread(
+                AndroidOnionProxyManager.class.getCanonicalName(),
+                android.os.Process.THREAD_PRIORITY_BACKGROUND
+        );
+
+        this.backgroundThread.start();
+        this.backgroundHandler = new Handler(backgroundThread.getLooper(), new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg) {
+                if (msg.what == INNER_MESSAGE_NETWORK_STATE) {
+                    final Intent intent = msg.getData().getParcelable("intent");
+
+                    try {
+                        if(intent == null || !isRunning()) {
+                            return true;
+                        }
+                    }
+                    catch (IOException e) {
+                        LOG.info("Did someone call before Tor was ready?", e);
+                        return true;
+                    }
+
+                    boolean online = !intent.getBooleanExtra(EXTRA_NO_CONNECTIVITY, false);
+
+                    if (online) {
+                        // Some devices fail to set EXTRA_NO_CONNECTIVITY, double check
+                        final Object o = context.getSystemService(CONNECTIVITY_SERVICE);
+                        final ConnectivityManager cm = (ConnectivityManager) o;
+                        final NetworkInfo net = cm.getActiveNetworkInfo();
+
+                        if (net == null || !net.isConnected()) {
+                            online = false;
+                        }
+                    }
+
+                    LOG.info("Online: " + online);
+
+                    try {
+                        enableNetwork(online);
+                    }
+                    catch(IOException e) {
+                        LOG.warn(e.toString(), e);
+                    }
+
+                    return true;
+                }
+
+                return false;
+            }
+        });
+
     }
 
     @Override
@@ -178,26 +238,12 @@ public class AndroidOnionProxyManager extends OnionProxyManager {
     private class NetworkStateReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context ctx, Intent i) {
-            try {
-                if(!isRunning()) return;
-            } catch (IOException e) {
-                LOG.info("Did someone call before Tor was ready?", e);
-                return;
-            }
-            boolean online = !i.getBooleanExtra(EXTRA_NO_CONNECTIVITY, false);
-            if(online) {
-                // Some devices fail to set EXTRA_NO_CONNECTIVITY, double check
-                Object o = ctx.getSystemService(CONNECTIVITY_SERVICE);
-                ConnectivityManager cm = (ConnectivityManager) o;
-                NetworkInfo net = cm.getActiveNetworkInfo();
-                if(net == null || !net.isConnected()) online = false;
-            }
-            LOG.info("Online: " + online);
-            try {
-                enableNetwork(online);
-            } catch(IOException e) {
-                LOG.warn(e.toString(), e);
-            }
+            final Message message = Message.obtain();
+
+            message.what = INNER_MESSAGE_NETWORK_STATE;
+            message.getData().putParcelable("intent", i);
+
+            backgroundHandler.sendMessage(message);
         }
     }
 }
