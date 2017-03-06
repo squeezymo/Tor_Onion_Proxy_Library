@@ -23,7 +23,6 @@ buildscript {
 }
 
 apply plugin: 'com.android.library'
-apply plugin: 'com.github.dcendents.android-maven'
 
 version = "0.0.2"
 group = 'com.msopentech.thali'
@@ -53,16 +52,16 @@ android {
     }
 }
 
+apply plugin: 'com.github.dcendents.android-maven'
+
 dependencies {
     compile fileTree(dir: '../universal/libs', include: '*.jar')
     compile project(':universal')
     compile 'org.slf4j:slf4j-api:1.7.7'
-    compile 'com.msopentech.thali:ThaliOnionProxyUniversal:' + version
+    //compile 'com.msopentech.thali:ThaliOnionProxyUniversal:' + version
 
     androidTestCompile 'org.slf4j:slf4j-android:1.7.7'
 }
-
-apply plugin: 'com.github.dcendents.android-maven'
 
 task sourcesJar(type: Jar) {
     classifier = 'sources'
