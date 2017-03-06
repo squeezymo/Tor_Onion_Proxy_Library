@@ -18,12 +18,13 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.2'
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'
+        classpath 'com.android.tools.build:gradle:2.3.0'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
     }
 }
 
 apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
 
 version = "0.0.2"
 group = 'com.msopentech.thali'
@@ -35,12 +36,12 @@ repositories {
 }
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.2"
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
 
     defaultConfig {
         minSdkVersion 14 // Please see the readme if you need Sdk support below 16
-        targetSdkVersion 21
+        targetSdkVersion 25
     }
 
     // Needed to work around https://code.google.com/p/android/issues/detail?id=61573#c14
