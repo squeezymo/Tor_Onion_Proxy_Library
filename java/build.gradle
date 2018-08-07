@@ -70,15 +70,9 @@ task sourcesJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.java.srcDirs
 }
 
-task generateJavadocs(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
 artifacts {
     archives jar
     archives sourcesJar
-    archives generateJavadocs
     archives file: file('../universal/libs/jtorctl-briar.jar'), name: 'briarjtorctl', type: 'jar'
 }
 
