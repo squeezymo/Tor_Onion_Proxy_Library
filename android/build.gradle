@@ -34,12 +34,12 @@ repositories {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 27
+    buildToolsVersion "27.0.3"
 
     defaultConfig {
         minSdkVersion 14 // Please see the readme if you need Sdk support below 16
-        targetSdkVersion 25
+        targetSdkVersion 27
     }
 
     // Needed to work around https://code.google.com/p/android/issues/detail?id=61573#c14
