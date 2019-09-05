@@ -13,12 +13,13 @@ See the Apache 2 License for the specific language governing permissions and lim
 
 buildscript {
     repositories {
+        google()
     	jcenter()
         mavenLocal()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.0'
+        classpath 'com.android.tools.build:gradle:3.5.0'
     }
 }
 
@@ -34,12 +35,11 @@ repositories {
 }
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion "27.0.3"
+    compileSdkVersion 28
 
     defaultConfig {
         minSdkVersion 14 // Please see the readme if you need Sdk support below 16
-        targetSdkVersion 27
+        targetSdkVersion 28
     }
 
     // Needed to work around https://code.google.com/p/android/issues/detail?id=61573#c14
@@ -87,4 +87,3 @@ task copyResources(type: Copy, dependsOn: deleteSourceFiles) {
 
 // I tried to depend on assemble directly and when I would run debug tests the dependency didn't work right
 preBuild.dependsOn(copyResources)
-

@@ -27,7 +27,8 @@ repositories {
 dependencies {
     compile fileTree(dir: '../universal/libs', include: '*.jar')
     compile 'org.slf4j:slf4j-api:1.7.7'
-    compile 'com.msopentech.thali:ThaliOnionProxyUniversal:' + version
+    compile project(':universal')
+    //compile 'com.msopentech.thali:ThaliOnionProxyUniversal:' + version
 
     testCompile 'junit:junit:4.11'
     testCompile 'org.slf4j:slf4j-simple:1.7.7'
